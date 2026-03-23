@@ -137,10 +137,10 @@ export const useEditorStore = create<EditorState>()(
   },
   runPipeline: async () => {
     const state = get();
-    // Find all target tool nodes
+    // Find all generation target nodes
     const targetNodes = state.nodes.filter(n => ['image', 'video', 'enhancer'].includes(n.type || ''));
     
-    // Set loading state
+    // Set loading state on all target nodes
     targetNodes.forEach(node => {
       state.updateNodeData(node.id, { isLoading: true, imageUrl: undefined, error: undefined });
     });
@@ -148,17 +148,30 @@ export const useEditorStore = create<EditorState>()(
     // Run generations in parallel
     await Promise.all(
       targetNodes.map(async (node) => {
-        // Retrieve connected prompt nodes for this target
+        // Traverse all edges pointing to this node
         const incomingEdges = state.edges.filter(e => e.target === node.id);
         const sourceNodes = state.nodes.filter(n => incomingEdges.some(e => e.source === n.id));
+
+        // Grab connected prompt text
         const promptNode = sourceNodes.find(n => n.type === 'prompt');
-        const promptText = promptNode?.data?.prompt || "A futuristic city skyline at sunset, cyberpunk aesthetic";
-        
+        const promptText = (promptNode?.data?.prompt as string) || "A futuristic city skyline at sunset, cyberpunk aesthetic";
+
+        // Grab optional connected base image
+        const imageInputNode = sourceNodes.find(n => n.type === 'image_input');
+        const baseImageUrl = imageInputNode?.data?.baseImageUrl as string | undefined;
+
+        // Grab optional connected settings
+        const settingsNode = sourceNodes.find(n => n.type === 'settings');
+        const guidance_scale = (settingsNode?.data?.guidance_scale as number) ?? 7.5;
+        const steps = (settingsNode?.data?.steps as number) ?? 30;
+        const width = (settingsNode?.data?.width as number) ?? 1024;
+        const height = (settingsNode?.data?.height as number) ?? 1024;
+
         try {
           const res = await fetch('/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptText, type: node.type })
+            body: JSON.stringify({ prompt: promptText, type: node.type, baseImageUrl, guidance_scale, steps, width, height })
           });
           
           const data = await res.json();

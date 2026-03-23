@@ -3,23 +3,37 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { prompt, type } = body;
+    const { prompt, type, baseImageUrl, guidance_scale = 7.5, steps = 30, width = 1024, height = 1024 } = body;
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // TODO: Replace with real Replicate/OpenAI API call using process.env
-    // e.g. const output = await replicate.run(model, { input: { prompt } })
-
-    const dummyUrls = [
-      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=600&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=600&auto=format&fit=crop"
-    ];
+    // --- OPTION 1: Free AI Image Generation via Pollinations.ai ---
+    // This requires NO API KEY and generates real unique images instantly.
+    const seed = Math.floor(Math.random() * 1000000);
+    const encodedPrompt = encodeURIComponent(prompt || "beautiful aesthetic artwork");
+    const imageUrl = `https://pollinations.ai/p/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`;
     
-    // Pick random dummy image
-    const imageUrl = dummyUrls[Math.floor(Math.random() * dummyUrls.length)];
+    // Log what was received for debugging
+    console.log(`[Generate] type=${type}, steps=${steps}, cfg=${guidance_scale}, has_base_image=${!!baseImageUrl}`);
+
+    // Wait slightly to ensure UI loading state is visible
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // --- OPTION 2: OpenAI DALL-E 3 (Requires API Key in .env.local) ---
+    /*
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({ success: false, error: "Missing OPENAI_API_KEY in .env.local" }, { status: 400 });
+    }
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({ model: "dall-e-3", prompt: prompt, n: 1, size: "1024x1024" })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const imageUrl = data.data[0].url;
+    */
 
     return NextResponse.json({ success: true, imageUrl, prompt });
   } catch (error) {

@@ -7,6 +7,8 @@ import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '@/store/editorStore';
 import PromptNode from '@/components/node-editor/nodes/PromptNode';
 import ImageNode from '@/components/node-editor/nodes/ImageNode';
+import ImageInputNode from '@/components/node-editor/nodes/ImageInputNode';
+import SettingsNode from '@/components/node-editor/nodes/SettingsNode';
 import Toolbar from '@/components/ui/Toolbar';
 
 const nodeTypes = {
@@ -14,6 +16,8 @@ const nodeTypes = {
   image: ImageNode,
   video: ImageNode,
   enhancer: ImageNode,
+  image_input: ImageInputNode,
+  settings: SettingsNode,
 };
 
 function FlowCanvas() {
