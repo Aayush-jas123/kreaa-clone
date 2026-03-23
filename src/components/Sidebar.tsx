@@ -1,5 +1,8 @@
+"use client";
+
 import Link from 'next/link';
-import { Home, Share2, Image as ImageIcon, Video, Wand2 } from 'lucide-react';
+import { Home, Share2 } from 'lucide-react';
+import { TOOL_CATALOG } from '@/config/tools';
 
 export default function Sidebar() {
   return (
@@ -26,18 +29,21 @@ export default function Sidebar() {
         <div className="pt-4">
           <h2 className="px-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Tools</h2>
           <nav className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-2 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors">
-              <ImageIcon className="w-5 h-5" />
-              <span>Image</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-2 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors">
-              <Video className="w-5 h-5" />
-              <span>Video</span>
-            </button>
-            <button className="w-full flex items-center gap-3 px-2 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors">
-              <Wand2 className="w-5 h-5" />
-              <span>Enhancer</span>
-            </button>
+            {TOOL_CATALOG.map((tool) => (
+              <button 
+                key={tool.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('application/reactflow', tool.type);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                className="w-full flex items-center gap-3 px-2 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors cursor-grab active:cursor-grabbing"
+                title={tool.description}
+              >
+                <tool.icon className="w-5 h-5" />
+                <span>{tool.name}</span>
+              </button>
+            ))}
           </nav>
         </div>
       </div>
