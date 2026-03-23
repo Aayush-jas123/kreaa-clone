@@ -1,14 +1,21 @@
-import { Image as ImageIcon, Video, Wand2, ImagePlus, SlidersHorizontal, LucideIcon } from 'lucide-react';
+import { Image as ImageIcon, Video, Wand2, ImagePlus, SlidersHorizontal, Bot, LucideIcon } from 'lucide-react';
 
 export type ToolItem = {
   id: string;
   name: string;
   icon: LucideIcon;
-  type: 'image' | 'video' | 'enhancer' | 'image_input' | 'settings';
+  type: 'image' | 'video' | 'enhancer' | 'image_input' | 'settings' | 'llm';
   description: string;
 };
 
 export const TOOL_CATALOG: ToolItem[] = [
+  {
+    id: 'tool-llm',
+    name: 'Gemini LLM',
+    icon: Bot,
+    type: 'llm',
+    description: 'Send a prompt to Gemini AI and get a response',
+  },
   {
     id: 'tool-image-input',
     name: 'Add Image',

@@ -9,6 +9,7 @@ import PromptNode from '@/components/node-editor/nodes/PromptNode';
 import ImageNode from '@/components/node-editor/nodes/ImageNode';
 import ImageInputNode from '@/components/node-editor/nodes/ImageInputNode';
 import SettingsNode from '@/components/node-editor/nodes/SettingsNode';
+import LLMNode from '@/components/node-editor/nodes/LLMNode';
 import Toolbar from '@/components/ui/Toolbar';
 
 const nodeTypes = {
@@ -18,6 +19,7 @@ const nodeTypes = {
   enhancer: ImageNode,
   image_input: ImageInputNode,
   settings: SettingsNode,
+  llm: LLMNode,
 };
 
 function FlowCanvas() {
