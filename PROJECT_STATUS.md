@@ -1,31 +1,80 @@
 # Krea Clone - Project Status & Context
 
-> **Note to AI Assistants:** This file serves as the single source of truth for the project's current state, architecture, and upcoming goals. You MUST read this file when starting a new conversation to immediately regain context without needing the user to explain everything from scratch.
+> **Note to AI Assistants:** Read this file at the start of every session to immediately regain context. Do NOT ask the user to explain the current state.
 
 ## 1. Project Overview
-A web-based Node Editor application inspired by Krea AI, allowing users to connect various AI tools (like Text-to-Image and Video generation) into processing pipelines.
+A Next.js node-editor app inspired by Krea AI. Users connect AI tool nodes (Prompt, Generation, LLM, Settings, ImageInput) into pipelines and run them to generate real images.
 
-## 2. Tech Stack
-- **Framework:** Next.js (App Router), React 19
-- **State Management:** Zustand (with `persist` middleware for local storage)
-- **Canvas/Nodes:** React Flow (`@xyflow/react`)
-- **Styling:** Tailwind CSS, Lucide React Icons
+- **Repo:** https://github.com/Aayush-jas123/kreaa-clone
+- **Dev:** `npm run dev` → http://localhost:3000
+- **Stack:** Next.js 16 (App Router), React 19, React Flow (`@xyflow/react`), Zustand (with `persist`), Tailwind CSS v4, Lucide Icons, `@google/generative-ai`, Zod
 
-## 3. Current Completed Features (Phases 1-10)
-✅ **Canvas & Nodes:** Fully working drag-and-drop React Flow canvas inside `src/app/editor/page.tsx`. Custom nodes (Prompt, Image/Video/Enhancer) with automatic visual handles.
-✅ **State Persistence:** `src/store/editorStore.ts` automatically perists nodes and edges to localStorage.
-✅ **Canvas Tools:** Bottom toolbar with Undo/Redo, Zoom In/Out, and Fit View. Canvas supports grid snapping.
-✅ **Export/Import:** Workflows can be exported to JSON and re-imported via top navbar buttons.
-✅ **Pipeline Execution:** A simulated backend `/api/generate` route takes target nodes and processes generations (currently returning dummy aesthetic images from Unsplash).
+## 2. Architecture
 
-## 4. Current Architecture Notes
-- **Store (`src/store/editorStore.ts`):** Manages the global state of the canvas. Contains custom history logic (`past`/`future` arrays) for undo/redo manually triggered on node drag stops and connections. Contains `runPipeline` behavior to iterate through nodes and trigger backend generation.
-- **Node Components (`src/components/node-editor/nodes/`):** 
-  - `PromptNode`: Captures text input.
-  - `ImageNode`: Displays generated output, handles loading states, error states, and image downloading.
-- **API (`src/app/api/generate/route.ts`):** The POST endpoint for triggering generations. Currently simulates a 2-second delay and returns a placeholder link.
+### Routes
+| Route | Purpose |
+|---|---|
+| `/` | Home / dashboard page |
+| `/editor` | Node editor canvas page |
+| `/api/generate` | POST – Image generation via Pollinations.ai |
+| `/api/proxy-image` | GET – Server-side proxy that fetches Pollinations image and streams to browser |
+| `/api/llm` | POST – Calls Google Gemini API for text generation |
 
-## 5. Next Planned Phases
-- **Real API Integration:** Swap out the dummy `/api/generate` logic with real Replicate/OpenAI SDKs once API keys are provided.
-- **Advanced Nodes:** Build ControlNet, LoRA, and Image-to-Image nodes.
-- **User Authentication & Cloud Sync:** Move away from `localStorage` to Supabase/Firebase for persistent user accounts and cloud project saves.
+### Key Files
+| File | Purpose |
+|---|---|
+| `src/store/editorStore.ts` | Global Zustand store. Persists nodes+edges to localStorage. Has manual undo/redo (past/future arrays). `runPipeline()` traverses all generation nodes, finds connected Prompt/ImageInput/Settings nodes, calls `/api/generate` |
+| `src/components/Sidebar.tsx` | Left sidebar with draggable tool items |
+| `src/config/tools.ts` | Tool catalog array (Gemini LLM, Add Image, Generation, Video, Enhancer, Settings) |
+| `src/app/editor/page.tsx` | Main editor page with ReactFlow canvas + nodeTypes registry |
+| `src/components/ui/Toolbar.tsx` | Floating bottom toolbar with Undo, Redo, Zoom In/Out, Fit View |
+
+### Node Types
+| Node | File | Description |
+|---|---|---|
+| `prompt` | `PromptNode.tsx` | Text input for generation prompts |
+| `image` / `video` / `enhancer` | `ImageNode.tsx` | Displays generated image, has download button, shows error state |
+| `image_input` | `ImageInputNode.tsx` | Upload a base image for img2img tasks |
+| `settings` | `SettingsNode.tsx` | Sliders for guidance_scale, steps, aspect ratio (1:1/16:9/9:16) |
+| `llm` | `LLMNode.tsx` | Gemini LLM node with system prompt + user prompt + response display |
+
+## 3. Completed Phases (1-13)
+- ✅ Project setup, routing, layout, Sidebar
+- ✅ Zustand store with persist + undo/redo history
+- ✅ React Flow canvas with drag-and-drop node creation
+- ✅ Custom nodes: Prompt, Image, ImageInput, Settings, Gemini LLM
+- ✅ Canvas toolbar: Undo, Redo, Zoom, Fit View, grid snap
+- ✅ Pipeline execution via `/api/generate` (Pollinations.ai)
+- ✅ Export/Import workflow as JSON
+- ✅ Image download from ImageNode
+- ✅ `/api/llm` with `@google/generative-ai` + Zod validation
+- ✅ `/api/proxy-image` server-side image proxy
+
+## 4. Known Bugs (Fix Next Session)
+
+### Bug 1: Gemini LLM 404 Error
+- **Symptom:** Clicking "Ask Gemini" shows 500 error in node
+- **Cause:** Model name `gemini-2.0-flash` returns 404 — the API key may only have access to specific model versions
+- **Fix:** In `src/app/api/llm/route.ts` line ~30, try these model names in order until one works:
+  1. `gemini-2.0-flash-exp`
+  2. `gemini-1.5-flash-latest`
+  3. `gemini-1.5-flash`
+  4. `gemini-pro`
+
+### Bug 2: Image Node Shows "Generated result" (alt text) Instead of Image
+- **Symptom:** After Run Pipeline, the ImageNode shows "Generated result" text (the `<img>` alt) instead of the actual image
+- **Cause:** `isLoading` is set to `false` when `/api/generate` returns the proxy URL, but the image itself takes 15-20s to generate on Pollinations. The `<img>` tag shows alt text while loading.
+- **Fix:** In `src/components/node-editor/nodes/ImageNode.tsx`, add local `useState` for `imgLoaded`. In the `<img>` tag, add `onLoad={() => setImgLoaded(true)}` and `onError={() => setImgError(true)}`. Show spinner until `imgLoaded` is true or there's an error.
+
+## 5. Environment Variables
+File: `d:\hola\.env.local` (git-ignored)
+```
+OPENAI_API_KEY=...      # Optional (DALL-E 3 is commented out in generate route)
+GEMINI_API_KEY=...      # Required for Gemini LLM node
+```
+
+## 6. Next Steps (When Resuming)
+1. Fix Bug 1 (Gemini model name) — ~5 min
+2. Fix Bug 2 (ImageNode loading state) — ~15 min
+3. Evaluate integrating Trigger.dev for background task execution (spec requirement)
+4. Add Transloadit for file uploads on ImageInputNode

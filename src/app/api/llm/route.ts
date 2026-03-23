@@ -23,17 +23,36 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    
+    // Try gemini-2.0-flash first, fallback to older models
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: systemPrompt,
+      model: "gemini-2.0-flash",
     });
 
-    const result = await model.generateContent(prompt);
+    const chat = model.startChat({
+      history: [],
+      generationConfig: { maxOutputTokens: 2048 },
+    });
+
+    const fullPrompt = systemPrompt 
+      ? `${systemPrompt}\n\nUser: ${prompt}` 
+      : prompt;
+
+    const result = await chat.sendMessage(fullPrompt);
     const text = result.response.text();
 
     return NextResponse.json({ success: true, text });
   } catch (error: any) {
     console.error("[LLM] Error:", error?.message || error);
+    
+    // Provide helpful error message if model not found
+    if (error?.message?.includes('404') || error?.message?.includes('not found')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Model not available. Check your Gemini API key has access to Gemini 2.0 Flash." 
+      }, { status: 500 });
+    }
+    
     return NextResponse.json({ success: false, error: error?.message || "LLM request failed" }, { status: 500 });
   }
 }

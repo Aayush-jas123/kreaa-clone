@@ -9,24 +9,13 @@ export async function POST(req: Request) {
 
     const seed = Math.floor(Math.random() * 1000000);
     const encodedPrompt = encodeURIComponent(prompt || "beautiful aesthetic artwork");
-    const pollinationsUrl = `https://pollinations.ai/p/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`;
+    
+    // Build a stable Pollinations URL with the given dimensions
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true`;
 
-    // Actually fetch & verify the image from Pollinations so it's ready when we return
-    const imageResponse = await fetch(pollinationsUrl, {
-      signal: AbortSignal.timeout(30000), // 30s timeout
-    });
+    // Return the URL directly — the frontend will use an img proxy route to display it
+    return NextResponse.json({ success: true, imageUrl: `/api/proxy-image?url=${encodeURIComponent(pollinationsUrl)}`, prompt });
 
-    if (!imageResponse.ok) {
-      throw new Error(`Pollinations returned ${imageResponse.status}`);
-    }
-
-    // Convert to base64 so the browser can display it immediately without a second fetch
-    const buffer = await imageResponse.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-    const imageUrl = `data:${contentType};base64,${base64}`;
-
-    return NextResponse.json({ success: true, imageUrl, prompt });
   } catch (error: any) {
     console.error("[Generate] Error:", error?.message || error);
     return NextResponse.json(
