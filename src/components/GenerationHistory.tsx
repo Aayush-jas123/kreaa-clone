@@ -34,6 +34,21 @@ export default function GenerationHistory() {
     fetchHistory();
   }, []);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this history item?")) return;
+    try {
+      const res = await fetch("/api/generations/delete", {
+        method: "POST",
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setGenerations(prev => prev.filter(g => g.id !== id));
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-3">
@@ -116,6 +131,13 @@ export default function GenerationHistory() {
                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
                       {new Date(gen.createdAt).toLocaleDateString()}
                    </p>
+                   <button 
+                     onClick={() => handleDelete(gen.id)}
+                     className="p-1.5 hover:bg-red-500/10 text-zinc-600 hover:text-red-500 rounded transition-colors"
+                     title="Delete"
+                   >
+                     <Trash2 className="w-3.5 h-3.5" />
+                   </button>
                 </div>
               </div>
             </div>

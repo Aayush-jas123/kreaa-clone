@@ -14,6 +14,7 @@ import LLMNode from '@/components/node-editor/nodes/LLMNode';
 import Toolbar from '@/components/ui/Toolbar';
 import NodePalette from '@/components/ui/NodePalette';
 import GenerationHistory from '@/components/GenerationHistory';
+import OutputsGallery from '@/components/OutputsGallery';
 import { Play, Download, Upload, Zap, RotateCcw } from 'lucide-react';
 
 const nodeTypes = {
@@ -333,7 +334,11 @@ export default function EditorPage() {
           <GenerationHistory />
         )}
 
-        {(activeTab === 'outputs' || activeTab === 'settings') && (
+        {activeTab === 'outputs' && (
+          <OutputsGallery />
+        )}
+
+        {activeTab === 'settings' && (
           <div className="flex-1 h-full flex items-center justify-center text-zinc-600 bg-[#0e0e0e]">
              <p className="text-xs font-black uppercase tracking-widest opacity-30">Coming Soon</p>
           </div>
