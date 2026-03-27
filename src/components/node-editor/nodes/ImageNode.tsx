@@ -1,9 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Image as ImageIcon, Download, Sparkles, X } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 
 export default function ImageNode({ id, data }: any) {
   const deleteNode = useEditorStore((state) => state.deleteNode);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (data.isLoading) {
+      setImgLoaded(false);
+      setImgError(false);
+    }
+  }, [data.isLoading, data.imageUrl]);
 
   const handleDownload = () => {
     if (!data.imageUrl) return;
@@ -44,7 +54,27 @@ export default function ImageNode({ id, data }: any) {
       <div className="p-4">
         <div className={`w-full aspect-square bg-[#0e0e0e] rounded-lg border flex flex-col items-center justify-center text-zinc-600 overflow-hidden relative shadow-inner ${data.error ? 'border-red-500/50' : 'border-[#3f3f46]'}`}>
            {data.imageUrl && !data.isLoading ? (
-             <img src={data.imageUrl} alt="Generated result" className="w-full h-full object-cover" />
+             <>
+               <img 
+                 src={data.imageUrl} 
+                 alt="Generated result" 
+                 className={`w-full h-full object-cover ${imgLoaded ? 'block' : 'hidden'}`}
+                 onLoad={() => setImgLoaded(true)}
+                 onError={() => setImgError(true)}
+               />
+               {!imgLoaded && !imgError && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center bg-[#0e0e0e]">
+                   <div className="w-8 h-8 rounded-full border-4 border-zinc-700 border-t-purple-500 animate-spin" />
+                   <span className="text-xs font-medium bg-purple-900/30 px-3 py-1 rounded-full text-purple-400 border border-purple-500/30 animate-pulse">Loading image...</span>
+                 </div>
+               )}
+               {imgError && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center bg-[#0e0e0e]">
+                   <X className="w-8 h-8 text-red-500 opacity-80" />
+                   <span className="text-xs font-medium bg-red-900/30 px-3 py-1 rounded-full text-red-400 border border-red-500/30">Failed to load</span>
+                 </div>
+               )}
+             </>
            ) : (
              <div className="flex flex-col items-center gap-3 text-center">
                {data.isLoading ? (

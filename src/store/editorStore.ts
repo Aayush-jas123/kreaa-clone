@@ -175,8 +175,29 @@ export const useEditorStore = create<EditorState>()(
           });
           
           const data = await res.json();
+          
           if (data.success) {
-            get().updateNodeData(node.id, { isLoading: false, imageUrl: data.imageUrl, error: undefined });
+            if (data.isAsync) {
+              const pollRunStatus = async () => {
+                const maxAttempts = 60;
+                for (let i = 0; i < maxAttempts; i++) {
+                  const statusRes = await fetch(`/api/run-status?runId=${data.runId}`);
+                  const statusData = await statusRes.json();
+                  if (statusData.status === "SUCCESS") {
+                    get().updateNodeData(node.id, { isLoading: false, imageUrl: statusData.output.imageUrl });
+                    return;
+                  } else if (statusData.status === "FAILED" || statusData.status === "SYSTEM_FAILURE") {
+                    get().updateNodeData(node.id, { isLoading: false, error: "Background task failed", imageUrl: undefined });
+                    return;
+                  }
+                  await new Promise(r => setTimeout(r, 2000));
+                }
+                get().updateNodeData(node.id, { isLoading: false, error: "Timeout waiting for job", imageUrl: undefined });
+              };
+              pollRunStatus();
+            } else {
+              get().updateNodeData(node.id, { isLoading: false, imageUrl: data.imageUrl, error: undefined });
+            }
           } else {
             get().updateNodeData(node.id, { isLoading: false, error: data.error || "Generation failed", imageUrl: undefined });
           }

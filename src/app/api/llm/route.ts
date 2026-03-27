@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
+import { tasks } from '@trigger.dev/sdk/v3';
 
 const RequestSchema = z.object({
   prompt: z.string().min(1, "Prompt cannot be empty"),
@@ -18,30 +19,57 @@ export async function POST(req: Request) {
 
     const { prompt, systemPrompt } = parsed.data;
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ success: false, error: "Missing GEMINI_API_KEY in .env.local" }, { status: 400 });
+    let runId;
+    let fallbackText = "";
+
+    try {
+      const handle = await tasks.trigger("generate-text", { prompt, systemPrompt });
+      runId = handle.id;
+    } catch (triggerError) {
+      console.warn("Trigger.dev missing or failed, falling back to sync:", triggerError);
+      
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json({ success: false, error: "Missing GEMINI_API_KEY in .env.local" }, { status: 400 });
+      }
+
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const modelsToTry = [
+        "gemini-2.0-flash-exp",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-pro"
+      ];
+
+      let result = null;
+      let lastError = null;
+      
+      const fullPrompt = systemPrompt ? `${systemPrompt}\n\nUser: ${prompt}` : prompt;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const chat = model.startChat({
+            history: [],
+            generationConfig: { maxOutputTokens: 2048 },
+          });
+          result = await chat.sendMessage(fullPrompt);
+          break;
+        } catch (err: any) {
+          lastError = err;
+        }
+      }
+
+      if (!result) {
+        throw lastError || new Error("All fallback models failed");
+      }
+      fallbackText = result.response.text();
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    
-    // Try gemini-2.0-flash first, fallback to older models
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
-    });
-
-    const chat = model.startChat({
-      history: [],
-      generationConfig: { maxOutputTokens: 2048 },
-    });
-
-    const fullPrompt = systemPrompt 
-      ? `${systemPrompt}\n\nUser: ${prompt}` 
-      : prompt;
-
-    const result = await chat.sendMessage(fullPrompt);
-    const text = result.response.text();
-
-    return NextResponse.json({ success: true, text });
+    if (runId) {
+      return NextResponse.json({ success: true, runId, isAsync: true });
+    } else {
+      return NextResponse.json({ success: true, text: fallbackText, isAsync: false });
+    }
   } catch (error: any) {
     console.error("[LLM] Error:", error?.message || error);
     

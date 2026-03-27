@@ -10,6 +10,10 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@trigger.dev/sdk": "^3.3.17",
+    "@uppy/core": "^5.2.0",
+    "@uppy/react": "^5.2.0",
+    "@uppy/transloadit": "^5.5.1",
     "@xyflow/react": "^12.10.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",

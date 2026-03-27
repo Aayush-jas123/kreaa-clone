@@ -28,13 +28,37 @@ export default function LLMNode({ id, data }: any) {
       });
       const result = await res.json();
       if (result.success) {
-        updateNodeData(id, { output: result.text, error: '' });
+        if (result.isAsync) {
+          const pollRunStatus = async () => {
+            const maxAttempts = 60;
+            for (let i = 0; i < maxAttempts; i++) {
+              const statusRes = await fetch(`/api/run-status?runId=${result.runId}`);
+              const statusData = await statusRes.json();
+              if (statusData.status === "SUCCESS") {
+                updateNodeData(id, { output: statusData.output.text, error: '' });
+                setIsLoading(false);
+                return;
+              } else if (statusData.status === "FAILED" || statusData.status === "SYSTEM_FAILURE") {
+                updateNodeData(id, { error: 'Background task failed', output: '' });
+                setIsLoading(false);
+                return;
+              }
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            updateNodeData(id, { error: 'Timeout waiting for job', output: '' });
+            setIsLoading(false);
+          };
+          pollRunStatus();
+        } else {
+          updateNodeData(id, { output: result.text, error: '' });
+          setIsLoading(false);
+        }
       } else {
         updateNodeData(id, { error: result.error, output: '' });
+        setIsLoading(false);
       }
     } catch (e: any) {
       updateNodeData(id, { error: 'Network error', output: '' });
-    } finally {
       setIsLoading(false);
     }
   };
