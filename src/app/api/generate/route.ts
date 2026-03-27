@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       if (userId) {
         prisma.generation.create({
           data: { userId, prompt: fallbackPrompt, imageUrl: fallbackImageUrl, type: 'image' },
-        }).catch(err => console.warn('[Generate] Failed to save generation:', err));
+        }).catch((err: any) => console.warn('[Generate] Failed to save generation:', err));
       }
     }
 
