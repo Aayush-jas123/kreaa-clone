@@ -118,9 +118,9 @@ function FlowCanvasInner() {
         minZoom={0.2}
       >
         <Background color="#333" gap={20} size={1.5} />
-        <Toolbar />
-        <NodePalette />
       </ReactFlow>
+      <Toolbar />
+      <NodePalette />
     </div>
   );
 }
