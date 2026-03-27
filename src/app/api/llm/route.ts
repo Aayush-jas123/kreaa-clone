@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { tasks } from '@trigger.dev/sdk/v3';
+import { hasCredits, deductCredits } from '@/lib/user';
 
 const RequestSchema = z.object({
   prompt: z.string().min(1, "Prompt cannot be empty"),
@@ -11,6 +12,11 @@ const RequestSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+
+    // Credit Check
+    if (!await hasCredits(1)) {
+      return NextResponse.json({ success: false, error: 'Insufficient credits' }, { status: 403 });
+    }
     const parsed = RequestSchema.safeParse(body);
     
     if (!parsed.success) {
@@ -66,8 +72,10 @@ export async function POST(req: Request) {
     }
 
     if (runId) {
+      await deductCredits(1);
       return NextResponse.json({ success: true, runId, isAsync: true });
     } else {
+      await deductCredits(1);
       return NextResponse.json({ success: true, text: fallbackText, isAsync: false });
     }
   } catch (error: any) {

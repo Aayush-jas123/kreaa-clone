@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
-import { tasks } from '@trigger.dev/sdk/v3';export async function POST(req: Request) {
+import { tasks } from '@trigger.dev/sdk/v3';
+import { hasCredits, deductCredits } from '@/lib/user';
+
+export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { prompt, type, baseImageUrl, guidance_scale = 7.5, steps = 30, width = 1024, height = 1024 } = body;
+
+    // Credit Check
+    if (!await hasCredits(1)) {
+      return NextResponse.json({ success: false, error: 'Insufficient credits' }, { status: 403 });
+    }
 
     console.log(`[Generate] type=${type}, steps=${steps}, cfg=${guidance_scale}, has_base_image=${!!baseImageUrl}`);
 
@@ -23,8 +31,10 @@ import { tasks } from '@trigger.dev/sdk/v3';export async function POST(req: Requ
     }
 
     if (runId) {
+      await deductCredits(1);
       return NextResponse.json({ success: true, runId, isAsync: true, prompt: fallbackPrompt });
     } else {
+      await deductCredits(1);
       return NextResponse.json({ success: true, imageUrl: fallbackImageUrl, isAsync: false, prompt: fallbackPrompt });
     }
 

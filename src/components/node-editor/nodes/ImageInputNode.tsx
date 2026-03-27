@@ -5,9 +5,9 @@ import { useEditorStore } from '@/store/editorStore';
 
 import Uppy from '@uppy/core';
 import Transloadit from '@uppy/transloadit';
-import { DashboardModal } from '@uppy/react';
-import '@uppy/core/dist/style.css';
-import '@uppy/dashboard/dist/style.css';
+import DashboardModal from '@uppy/react/dashboard-modal';
+import '@uppy/core/css/style.css';
+import '@uppy/dashboard/css/style.css';
 
 export default function ImageInputNode({ id, data }: any) {
   const deleteNode = useEditorStore((state) => state.deleteNode);
@@ -21,8 +21,10 @@ export default function ImageInputNode({ id, data }: any) {
     })
     .use(Transloadit, {
       waitForEncoding: true,
-      params: {
-        auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_AUTH_KEY || '' },
+      assemblyOptions: {
+        params: {
+          auth: { key: process.env.NEXT_PUBLIC_TRANSLOADIT_AUTH_KEY || '' },
+        },
       },
     })
   );
@@ -33,13 +35,16 @@ export default function ImageInputNode({ id, data }: any) {
   useEffect(() => {
     uppy.on('upload', () => setIsUploading(true));
 
-    uppy.on('transloadit:complete', (assembly) => {
+    uppy.on('transloadit:complete', (assembly: any) => {
       let finalUrl = '';
       if (assembly.results && Object.keys(assembly.results).length > 0) {
          const stepName = Object.keys(assembly.results)[0];
-         finalUrl = assembly.results[stepName][0].ssl_url;
+         const results = assembly.results[stepName];
+         if (results && results.length > 0) {
+            finalUrl = results[0].ssl_url || results[0].url;
+         }
       } else if (assembly.uploads && assembly.uploads.length > 0) {
-         finalUrl = assembly.uploads[0].ssl_url;
+         finalUrl = assembly.uploads[0].ssl_url || assembly.uploads[0].url;
       }
       
       if (finalUrl) {

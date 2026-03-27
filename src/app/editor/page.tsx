@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect, Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactFlow, Background, Controls, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { ReactFlow, Background, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '@/store/editorStore';
 import PromptNode from '@/components/node-editor/nodes/PromptNode';
@@ -11,6 +12,7 @@ import ImageInputNode from '@/components/node-editor/nodes/ImageInputNode';
 import SettingsNode from '@/components/node-editor/nodes/SettingsNode';
 import LLMNode from '@/components/node-editor/nodes/LLMNode';
 import Toolbar from '@/components/ui/Toolbar';
+import { Play, Download, Upload, Zap, RotateCcw } from 'lucide-react';
 
 const nodeTypes = {
   prompt: PromptNode,
@@ -22,9 +24,18 @@ const nodeTypes = {
   llm: LLMNode,
 };
 
-function FlowCanvas() {
+function FlowCanvasInner() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('id');
+  const loadProject = useEditorStore((state) => state.loadProject);
+
+  useEffect(() => {
+    if (projectId) {
+      loadProject(projectId);
+    }
+  }, [projectId, loadProject]);
   
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes } = useEditorStore(
     useShallow((state) => ({
@@ -63,7 +74,7 @@ function FlowCanvas() {
 
       const newNode = {
         id: `node-${Date.now()}`,
-        type: nodeType,
+        type: nodeType as any,
         position,
         data: { label: `${type} node` },
       };
@@ -82,7 +93,7 @@ function FlowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        nodeTypes={nodeTypes}
+        nodeTypes={nodeTypes as any}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onNodeDragStop={onNodeDragStop}
@@ -100,9 +111,34 @@ function FlowCanvas() {
   );
 }
 
-import { Play, Download, Upload } from 'lucide-react';
+function FlowCanvas() {
+  return (
+    <Suspense fallback={<div className="flex-1 w-full bg-[#0e0e0e] flex items-center justify-center text-zinc-500">Loading Canvas...</div>}>
+      <FlowCanvasInner />
+    </Suspense>
+  );
+}
 
 export default function EditorPage() {
+  const projectName = useEditorStore((state) => state.projectName);
+  const setProjectName = useEditorStore((state) => state.setProjectName);
+  const saveProject = useEditorStore((state) => state.saveProject);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  const fetchCredits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/user/credits');
+      const data = await res.json();
+      if (data.credits !== undefined) setCredits(data.credits);
+    } catch (err) {}
+  }, []);
+
+  useEffect(() => {
+    fetchCredits();
+    const interval = setInterval(fetchCredits, 20000);
+    return () => clearInterval(interval);
+  }, [fetchCredits]);
+
   const handleExport = () => {
     const { nodes, edges } = useEditorStore.getState();
     const data = JSON.stringify({ nodes, edges }, null, 2);
@@ -110,7 +146,7 @@ export default function EditorPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `krea-workflow-${Date.now()}.json`;
+    link.download = `${projectName}-${Date.now()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -144,50 +180,82 @@ export default function EditorPage() {
 
   return (
     <div className="w-full h-full flex flex-col">
+      {/* Editor Header */}
       <div className="w-full h-20 border-b border-zinc-800 bg-[#111111] flex items-center px-8 justify-between shrink-0 shadow-sm z-10">
-        <div>
-           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-             <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center mr-2">
-               <div className="w-3 h-3 bg-white rounded-full mx-0.5" />
-               <div className="w-3 h-3 bg-white/50 rounded-full mx-0.5" />
-             </div>
-             Node Editor
-           </h2>
-           <p className="text-xs text-zinc-400 mt-1 pl-12 line-clamp-1">
-             Nodes is the most powerful way to operate Krea. Connect every tool and model into complex automated pipelines.
-           </p>
-        </div>
         <div className="flex items-center gap-4">
-          <button onClick={handleImport} className="p-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full transition-colors flex items-center justify-center" title="Import Workflow">
+           <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/40">
+             <Zap className="w-5 h-5 text-white" />
+           </div>
+           <div>
+              <input 
+                type="text" 
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="bg-transparent border-none text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50 rounded px-1 -ml-1 w-full max-w-sm"
+                placeholder="Untitled Project"
+              />
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-[10px] text-zinc-500 flex items-center gap-1.5 font-medium uppercase tracking-wider">
+                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                   Cloud Sync
+                </p>
+                <span className="text-zinc-700 text-[10px]">•</span>
+                <div className="flex items-center gap-1.5 text-[10px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20">
+                   <Zap className="w-2.5 h-2.5 fill-current" />
+                   <span className="font-bold">{credits !== null ? credits : '...'} Credits</span>
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => saveProject()}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all text-sm font-bold shadow-lg shadow-blue-900/20 active:scale-95"
+          >
+            Save to Cloud
+          </button>
+
+          <div className="h-8 w-px bg-zinc-800 mx-2" />
+          
+          <button onClick={handleImport} className="p-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-full transition-colors flex items-center justify-center border border-zinc-700/50" title="Import Workflow">
             <Upload className="w-4 h-4" />
           </button>
-          <button onClick={handleExport} className="p-2.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full transition-colors flex items-center justify-center mr-2" title="Export Workflow">
+          <button onClick={handleExport} className="p-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-full transition-colors flex items-center justify-center border border-zinc-700/50" title="Export Workflow">
             <Download className="w-4 h-4" />
           </button>
 
+          <div className="h-8 w-px bg-zinc-800 mx-2" />
+
           <button 
             onClick={() => useEditorStore.getState().runPipeline()}
-            className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-purple-900/20"
+            className="bg-zinc-100 hover:bg-white text-black px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95"
           >
-            Run Pipeline <Play className="w-4 h-4" />
+             Run Pipeline <Play className="w-4 h-4 fill-current" />
           </button>
+          
           <button 
             onClick={() => {
-              useEditorStore.getState().setNodes([]);
-              useEditorStore.getState().setEdges([]);
+              if (confirm('Clear entire canvas?')) {
+                useEditorStore.getState().setNodes([]);
+                useEditorStore.getState().setEdges([]);
+                useEditorStore.getState().setProjectName('Untitled Project');
+              }
             }} 
-            className="bg-white hover:bg-zinc-200 text-black px-6 py-2.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2"
+            className="p-2.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 flex items-center justify-center"
+            title="Clear Canvas"
           >
-            New Workflow <span className="text-lg leading-none">&rarr;</span>
+            <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
       
-      <div className="w-full bg-[#111111] border-b border-zinc-800 px-8 py-3 flex gap-6 text-sm font-medium z-10">
-         <button className="text-white">Projects</button>
-         <button className="text-zinc-500 hover:text-zinc-300">Apps</button>
-         <button className="text-zinc-500 hover:text-zinc-300">Examples</button>
-         <button className="text-zinc-500 hover:text-zinc-300">Templates</button>
+      {/* Sub Header / Tabs */}
+      <div className="w-full bg-[#111111] border-b border-zinc-800 px-8 py-3 flex gap-6 text-xs font-bold uppercase tracking-widest z-10">
+         <button className="text-white border-b-2 border-blue-500 pb-3 -mb-3">Pipeline</button>
+         <button className="text-zinc-500 hover:text-zinc-300">Outputs</button>
+         <button className="text-zinc-500 hover:text-zinc-300">History</button>
+         <button className="text-zinc-500 hover:text-zinc-300">Settings</button>
       </div>
 
       <ReactFlowProvider>

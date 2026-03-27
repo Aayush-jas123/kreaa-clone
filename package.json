@@ -6,12 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.0.7",
     "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^5.22.0",
     "@trigger.dev/sdk": "^3.3.17",
     "@uppy/core": "^5.2.0",
+    "@uppy/dashboard": "^5.1.1",
     "@uppy/react": "^5.2.0",
     "@uppy/transloadit": "^5.5.1",
     "@xyflow/react": "^12.10.1",
@@ -32,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

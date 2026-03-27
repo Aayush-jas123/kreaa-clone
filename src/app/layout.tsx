@@ -19,23 +19,27 @@ export const metadata: Metadata = {
 
 import Sidebar from "@/components/Sidebar";
 
+import { ClerkProvider } from '@clerk/nextjs';
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-[#0e0e0e] text-zinc-300`}
-      suppressHydrationWarning
-    >
-      <body className="h-full flex overflow-hidden" suppressHydrationWarning>
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-[#0e0e0e] text-zinc-300`}
+        suppressHydrationWarning
+      >
+        <body className="h-full flex overflow-hidden" suppressHydrationWarning>
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
