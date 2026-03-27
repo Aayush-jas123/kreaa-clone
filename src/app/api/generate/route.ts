@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { tasks } from '@trigger.dev/sdk/v3';
-import { hasCredits, deductCredits } from '@/lib/user';
+import { hasCredits, deductCredits, getCurrentUserId } from '@/lib/user';
+import prisma from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -9,7 +10,11 @@ export async function POST(req: Request) {
 
     // Credit Check
     if (!await hasCredits(1)) {
-      return NextResponse.json({ success: false, error: 'Insufficient credits' }, { status: 403 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Insufficient credits',
+        code: 'INSUFFICIENT_CREDITS'
+      }, { status: 403 });
     }
 
     console.log(`[Generate] type=${type}, steps=${steps}, cfg=${guidance_scale}, has_base_image=${!!baseImageUrl}`);
@@ -30,11 +35,21 @@ export async function POST(req: Request) {
       fallbackImageUrl = `/api/proxy-image?url=${encodeURIComponent(pollinationsUrl)}`;
     }
 
+    await deductCredits(1);
+
+    // Save generation to history (best effort, non-blocking)
+    if (!runId && fallbackImageUrl) {
+      const userId = await getCurrentUserId();
+      if (userId) {
+        prisma.generation.create({
+          data: { userId, prompt: fallbackPrompt, imageUrl: fallbackImageUrl, type: 'image' },
+        }).catch(err => console.warn('[Generate] Failed to save generation:', err));
+      }
+    }
+
     if (runId) {
-      await deductCredits(1);
       return NextResponse.json({ success: true, runId, isAsync: true, prompt: fallbackPrompt });
     } else {
-      await deductCredits(1);
       return NextResponse.json({ success: true, imageUrl: fallbackImageUrl, isAsync: false, prompt: fallbackPrompt });
     }
 

@@ -50,3 +50,8 @@ export async function deductCredits(amount: number = 1) {
     return false;
   }
 }
+
+export async function getCurrentUserId(): Promise<string | null> {
+  const { userId } = await auth();
+  return userId ?? null;
+}
