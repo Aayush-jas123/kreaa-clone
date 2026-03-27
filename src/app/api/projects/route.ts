@@ -46,3 +46,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  const { userId }: { userId: string | null } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+
+    const project = await prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!project || project.userId !== userId) {
+      return NextResponse.json({ error: 'Not found or unauthorized' }, { status: 404 });
+    }
+
+    await prisma.project.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete project:', error);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  }
+}

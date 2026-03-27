@@ -2,6 +2,7 @@ import { Sparkles, Image as ImageIcon, Video, ArrowRight, Zap, Diamond, FolderOp
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
+import ProjectCard from '@/components/ProjectCard';
 
 export default async function Home() {
   const { userId } = await auth();
@@ -48,22 +49,7 @@ export default async function Home() {
            
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
              {projects.map((project) => (
-               <Link 
-                 key={project.id} 
-                 href={`/editor?id=${project.id}`}
-                 className="group bg-[#111111] border border-zinc-800 hover:border-blue-500/50 rounded-2xl p-5 transition-all hover:shadow-2xl hover:shadow-blue-900/10 flex flex-col gap-4"
-               >
-                 <div className="w-full aspect-video bg-zinc-900 rounded-lg overflow-hidden flex items-center justify-center border border-zinc-800 group-hover:bg-zinc-800 transition-colors transition-all duration-300">
-                    <ImageIcon className="w-8 h-8 text-zinc-700 group-hover:scale-110 transition-transform" />
-                 </div>
-                 <div>
-                   <h3 className="text-white font-semibold truncate group-hover:text-blue-400 transition-colors">{project.name}</h3>
-                   <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(project.updatedAt).toLocaleDateString()}
-                   </div>
-                 </div>
-               </Link>
+                <ProjectCard key={project.id} project={project} />
              ))}
            </div>
         </section>

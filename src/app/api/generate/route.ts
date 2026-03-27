@@ -20,7 +20,12 @@ export async function POST(req: Request) {
     console.log(`[Generate] type=${type}, steps=${steps}, cfg=${guidance_scale}, has_base_image=${!!baseImageUrl}`);
 
     const seed = Math.floor(Math.random() * 1000000);
-    const fallbackPrompt = prompt || "beautiful aesthetic artwork";
+    let fallbackPrompt = prompt || "beautiful aesthetic artwork";
+    
+    // Enhancer Logic: Augment prompt with high-quality tokens
+    if (type === 'enhancer') {
+      fallbackPrompt = `HD, masterpiece, highly detailed, 8k resolution, cinematic lighting, sharp focus, ${fallbackPrompt}`;
+    }
     
     let runId;
     let fallbackImageUrl = "";

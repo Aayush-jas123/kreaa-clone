@@ -134,6 +134,7 @@ function FlowCanvas() {
 }
 
 import { useToast } from '@/components/ui/Toast';
+import CreditsModal from '@/components/CreditsModal';
 
 export default function EditorPage() {
   const projectName = useEditorStore((state) => state.projectName);
@@ -141,6 +142,7 @@ export default function EditorPage() {
   const saveProject = useEditorStore((state) => state.saveProject);
   const [credits, setCredits] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'pipeline' | 'history' | 'outputs' | 'settings'>('pipeline');
+  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
   const { toast, removeToast } = useToast();
 
   const fetchCredits = useCallback(async () => {
@@ -214,9 +216,14 @@ export default function EditorPage() {
   };
 
   const handleRunPipeline = async () => {
+    if (credits !== null && credits <= 0) {
+      setIsCreditsModalOpen(true);
+      return;
+    }
     toast("Pipeline started", "info");
     try {
       await useEditorStore.getState().runPipeline();
+      fetchCredits(); // Refresh credits after run
     } catch (err) {
       toast("Pipeline execution failed", "error");
     }
@@ -344,6 +351,17 @@ export default function EditorPage() {
           </div>
         )}
       </div>
+
+      <CreditsModal 
+        isOpen={isCreditsModalOpen} 
+        onClose={() => setIsCreditsModalOpen(false)}
+        onUpgrade={() => {
+          setIsCreditsModalOpen(false);
+          // Trigger Stripe checkout if needed or just scroll to Sidebar upgrade
+          const upgradeBtn = document.querySelector('[data-upgrade-btn]') as HTMLButtonElement;
+          if (upgradeBtn) upgradeBtn.click();
+        }}
+      />
     </div>
   );
 }

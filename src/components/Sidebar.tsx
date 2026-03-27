@@ -81,7 +81,7 @@ export default function Sidebar() {
                   <p className="text-[10px] text-zinc-500 font-medium">Available balance</p>
                 </div>
               </div>
-              <button onClick={() => setShowPricing(true)} className="w-full py-2 bg-zinc-100 hover:bg-white text-black text-[10px] font-bold rounded-lg transition-all uppercase tracking-wider active:scale-95 shadow-lg shadow-white/5">
+              <button onClick={() => setShowPricing(true)} data-upgrade-btn className="w-full py-2 bg-zinc-100 hover:bg-white text-black text-[10px] font-bold rounded-lg transition-all uppercase tracking-wider active:scale-95 shadow-lg shadow-white/5">
                 Upgrade Pro
               </button>
             </div>
