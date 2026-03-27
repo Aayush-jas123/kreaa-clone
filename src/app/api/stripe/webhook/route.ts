@@ -2,11 +2,11 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-03-25.dahlia',
-});
-
 export async function POST(req: Request) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2026-03-25.dahlia',
+  });
+
   const body = await req.text();
   const sig = req.headers.get('stripe-signature')!;
 
@@ -29,11 +29,7 @@ export async function POST(req: Request) {
     if (userId && credits) {
       await prisma.user.update({
         where: { id: userId },
-        data: {
-          credits: {
-            increment: parseInt(credits, 10),
-          },
-        },
+        data: { credits: { increment: parseInt(credits, 10) } },
       });
       console.log(`[Webhook] Added ${credits} credits to user ${userId}`);
     }
