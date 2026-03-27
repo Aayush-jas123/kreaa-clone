@@ -12,6 +12,8 @@ import ImageInputNode from '@/components/node-editor/nodes/ImageInputNode';
 import SettingsNode from '@/components/node-editor/nodes/SettingsNode';
 import LLMNode from '@/components/node-editor/nodes/LLMNode';
 import Toolbar from '@/components/ui/Toolbar';
+import NodePalette from '@/components/ui/NodePalette';
+import GenerationHistory from '@/components/GenerationHistory';
 import { Play, Download, Upload, Zap, RotateCcw } from 'lucide-react';
 
 const nodeTypes = {
@@ -69,14 +71,24 @@ function FlowCanvasInner() {
         y: event.clientY,
       });
 
-      // Simple heuristic: if it's not predefined, fallback to 'image' for visual display
-      const nodeType = nodeTypes[type as keyof typeof nodeTypes] ? type : 'image';
+      // Define default data based on type
+      let defaultData: any = { label: `${type} node` };
+      
+      if (type === 'prompt') {
+        defaultData = { prompt: '' };
+      } else if (type === 'llm') {
+        defaultData = { prompt: '', model: 'gemini-1.5-flash', temperature: 0.7 };
+      } else if (type === 'settings') {
+        defaultData = { guidance_scale: 7.5, steps: 30, width: 1024, height: 1024 };
+      } else if (type === 'video' || type === 'enhancer') {
+        defaultData = { mode: type };
+      }
 
       const newNode = {
         id: `node-${Date.now()}`,
-        type: nodeType as any,
+        type: type as any,
         position,
-        data: { label: `${type} node` },
+        data: defaultData,
       };
 
       useEditorStore.getState().saveHistory();
@@ -106,6 +118,7 @@ function FlowCanvasInner() {
       >
         <Background color="#333" gap={20} size={1.5} />
         <Toolbar />
+        <NodePalette />
       </ReactFlow>
     </div>
   );
@@ -119,11 +132,15 @@ function FlowCanvas() {
   );
 }
 
+import { useToast } from '@/components/ui/Toast';
+
 export default function EditorPage() {
   const projectName = useEditorStore((state) => state.projectName);
   const setProjectName = useEditorStore((state) => state.setProjectName);
   const saveProject = useEditorStore((state) => state.saveProject);
   const [credits, setCredits] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'history' | 'outputs' | 'settings'>('pipeline');
+  const { toast, removeToast } = useToast();
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -151,6 +168,7 @@ export default function EditorPage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    toast("Workflow exported successfully", "success");
   };
 
   const handleImport = () => {
@@ -161,6 +179,7 @@ export default function EditorPage() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
+      const loadingId = toast("Importing workflow...", "loading");
       reader.onload = (event) => {
         try {
           const content = event.target?.result as string;
@@ -168,14 +187,38 @@ export default function EditorPage() {
           if (nodes && edges) {
             useEditorStore.getState().setNodes(nodes);
             useEditorStore.getState().setEdges(edges);
+            removeToast(loadingId);
+            toast("Workflow imported", "success");
           }
         } catch (error) {
-          console.error("Failed to parse JSON", error);
+          removeToast(loadingId);
+          toast("Failed to parse JSON", "error");
         }
       };
       reader.readAsText(file);
     };
     input.click();
+  };
+
+  const handleSave = async () => {
+    const loadingId = toast("Saving to cloud...", "loading");
+    try {
+      await saveProject();
+      removeToast(loadingId);
+      toast("Project saved successfully", "success");
+    } catch (err) {
+      removeToast(loadingId);
+      toast("Cloud save failed", "error");
+    }
+  };
+
+  const handleRunPipeline = async () => {
+    toast("Pipeline started", "info");
+    try {
+      await useEditorStore.getState().runPipeline();
+    } catch (err) {
+      toast("Pipeline execution failed", "error");
+    }
   };
 
   return (
@@ -210,7 +253,7 @@ export default function EditorPage() {
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => saveProject()}
+            onClick={handleSave}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all text-sm font-bold shadow-lg shadow-blue-900/20 active:scale-95"
           >
             Save to Cloud
@@ -228,7 +271,7 @@ export default function EditorPage() {
           <div className="h-8 w-px bg-zinc-800 mx-2" />
 
           <button 
-            onClick={() => useEditorStore.getState().runPipeline()}
+            onClick={handleRunPipeline}
             className="bg-zinc-100 hover:bg-white text-black px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-xl shadow-white/5 active:scale-95"
           >
              Run Pipeline <Play className="w-4 h-4 fill-current" />
@@ -240,6 +283,7 @@ export default function EditorPage() {
                 useEditorStore.getState().setNodes([]);
                 useEditorStore.getState().setEdges([]);
                 useEditorStore.getState().setProjectName('Untitled Project');
+                toast("Canvas cleared", "info");
               }
             }} 
             className="p-2.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 flex items-center justify-center"
@@ -252,15 +296,49 @@ export default function EditorPage() {
       
       {/* Sub Header / Tabs */}
       <div className="w-full bg-[#111111] border-b border-zinc-800 px-8 py-3 flex gap-6 text-xs font-bold uppercase tracking-widest z-10">
-         <button className="text-white border-b-2 border-blue-500 pb-3 -mb-3">Pipeline</button>
-         <button className="text-zinc-500 hover:text-zinc-300">Outputs</button>
-         <button className="text-zinc-500 hover:text-zinc-300">History</button>
-         <button className="text-zinc-500 hover:text-zinc-300">Settings</button>
+         <button 
+           onClick={() => setActiveTab('pipeline')}
+           className={`${activeTab === 'pipeline' ? 'text-white border-b-2 border-blue-500 pb-3 -mb-3' : 'text-zinc-500 hover:text-zinc-300'}`}
+         >
+           Pipeline
+         </button>
+         <button 
+           onClick={() => setActiveTab('outputs')}
+           className={`${activeTab === 'outputs' ? 'text-white border-b-2 border-blue-500 pb-3 -mb-3' : 'text-zinc-500 hover:text-zinc-300'}`}
+         >
+           Outputs
+         </button>
+         <button 
+           onClick={() => setActiveTab('history')}
+           className={`${activeTab === 'history' ? 'text-white border-b-2 border-blue-500 pb-3 -mb-3' : 'text-zinc-500 hover:text-zinc-300'}`}
+         >
+           History
+         </button>
+         <button 
+           onClick={() => setActiveTab('settings')}
+           className={`${activeTab === 'settings' ? 'text-white border-b-2 border-blue-500 pb-3 -mb-3' : 'text-zinc-500 hover:text-zinc-300'}`}
+         >
+           Settings
+         </button>
       </div>
 
-      <ReactFlowProvider>
-        <FlowCanvas />
-      </ReactFlowProvider>
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'pipeline' && (
+          <ReactFlowProvider>
+            <FlowCanvas />
+          </ReactFlowProvider>
+        )}
+        
+        {activeTab === 'history' && (
+          <GenerationHistory />
+        )}
+
+        {(activeTab === 'outputs' || activeTab === 'settings') && (
+          <div className="flex-1 h-full flex items-center justify-center text-zinc-600 bg-[#0e0e0e]">
+             <p className="text-xs font-black uppercase tracking-widest opacity-30">Coming Soon</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

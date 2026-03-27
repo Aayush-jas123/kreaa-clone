@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { tasks } from '@trigger.dev/sdk/v3';
-import { hasCredits, deductCredits } from '@/lib/user';
+import { hasCredits, deductCredits, getCurrentUserId } from '@/lib/user';
+import prisma from '@/lib/prisma';
 
 const RequestSchema = z.object({
   prompt: z.string().min(1, "Prompt cannot be empty"),
@@ -76,6 +77,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, runId, isAsync: true });
     } else {
       await deductCredits(1);
+      
+      // Save to history (non-blocking)
+      const userId = await getCurrentUserId();
+      if (userId && fallbackText) {
+        prisma.generation.create({
+          data: {
+            userId,
+            prompt,
+            imageUrl: fallbackText, // Store text in imageUrl for now
+            type: 'text',
+          },
+        }).catch((dbErr: any) => console.warn('[LLM] History save failed:', dbErr));
+      }
+
       return NextResponse.json({ success: true, text: fallbackText, isAsync: false });
     }
   } catch (error: any) {
